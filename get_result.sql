@@ -1,6 +1,7 @@
-CREATE OR REPLACE FUNCTION "get_result"()
-  RETURNS "pg_catalog"."void" AS $BODY$ 
-	BEGIN
+
+CREATE OR REPLACE FUNCTION GET_RESULT() RETURNS VOID LANGUAGE 'plpgsql' COST 100 VOLATILE PARALLEL UNSAFE AS $BODY$
+
+BEGIN
 	DROP TABLE IF EXISTS RESULT;
 	CREATE TABLE RESULT AS WITH tab AS (
 		WITH RECURSIVE T ( root_tower_id, s_tower_id, e_tower_id, distance, DEPTH, line_id, voltage ) AS (
@@ -11,28 +12,28 @@ CREATE OR REPLACE FUNCTION "get_result"()
 				distance,
 				1 AS DEPTH,
 				line_id,
-				voltage 
+				voltage
 			FROM
 				temp_data UNION ALL
-			SELECT 
+			SELECT
 				T.root_tower_id,
 				d.s_tower_id,
 				d.e_tower_id,
 				d.distance + T.distance,
 				T.DEPTH + 1 AS DEPTH,
 				d.line_id,
-				d.voltage 
+				d.voltage
 			FROM
 				temp_data d
-				JOIN T ON ( d.s_tower_id = T.e_tower_id ) 
-			) SELECT * FROM T 
+				JOIN T ON ( d.s_tower_id = T.e_tower_id )
+			) SELECT * FROM T
 		),
 		tab2 AS (
-		SELECT 
+		SELECT
 			T.*,
 			ROW_NUMBER ( ) OVER ( PARTITION BY T.e_tower_id, T.s_tower_id ) rn,
-			COUNT ( * ) OVER ( PARTITION BY T.e_tower_id, T.s_tower_id ) cnt 
-		FROM tab T 
+			COUNT ( * ) OVER ( PARTITION BY T.e_tower_id, T.s_tower_id ) cnt
+		FROM tab T
 		) SELECT
 		root_tower_id,
 		s_tower_id,
@@ -40,14 +41,12 @@ CREATE OR REPLACE FUNCTION "get_result"()
 		distance,
 		DEPTH,
 		line_id,
-		voltage 
+		voltage
 	FROM
-		tab2 
+		tab2
 	WHERE
-		cnt = rn 
+		cnt = rn
 	ORDER BY
 		distance DESC;
 END;
-$BODY$
-  LANGUAGE plpgsql VOLATILE
-  COST 100
+$BODY$;

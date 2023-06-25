@@ -1,5 +1,5 @@
-CREATE OR REPLACE FUNCTION "initialize_data"("line_id_list" text, "parent_id" int4, "base_tower_id" int4)
-  RETURNS "pg_catalog"."void" AS $BODY$
+
+CREATE OR REPLACE FUNCTION INITIALIZE_DATA(LINE_ID_LIST text, PARENT_ID integer, BASE_TOWER_ID integer) RETURNS VOID LANGUAGE 'plpgsql' COST 100 VOLATILE PARALLEL UNSAFE AS $BODY$
 DECLARE
     line_id_record RECORD;
     tower_id_record RECORD;
@@ -28,7 +28,7 @@ BEGIN
 				base_tower_name VARCHAR,
 				voltage FLOAT
     );
-		
+
 		FOR line_id_record IN
         SELECT unnest(string_to_array(line_id_list, ','))::INTEGER AS line_id
     LOOP
@@ -50,24 +50,22 @@ BEGIN
             FROM rf_hd_tower AS prev_tower, rf_hd_tower AS current_tower
             WHERE prev_tower.tower_id = prev_tower_id
             AND current_tower.tower_id = current_tower_id;
-						
+
             SELECT prev_tower.tower_name || ' ' || current_tower.tower_name INTO line_name
             FROM rf_hd_tower AS prev_tower, rf_hd_tower AS current_tower
             WHERE prev_tower.tower_id = prev_tower_id
             AND current_tower.tower_id = current_tower_id;
-						
+
 						SELECT rf_hd_tower.tower_code INTO prev_tower_code FROM rf_hd_tower where tower_id = prev_tower_id;
 						SELECT CAST(COALESCE(NULLIF(rf_hd_tower.rel_tower_code, ''), '0') AS INTEGER) INTO rel_tower_code FROM rf_hd_tower where tower_id = prev_tower_id;
 						SELECT rf_hd_tower.rel_line_name INTO rel_line_name FROM rf_hd_tower where tower_id = prev_tower_id;
 						SELECT rf_hd_line.line_name INTO base_line_name FROM rf_hd_line where line_id = initialize_data.parent_id;
 						SELECT rf_hd_tower.tower_name INTO base_tower_name from rf_hd_tower where tower_id = base_tower_id;
-						
+
             INSERT INTO temp_data (distance, s_tower_id, e_tower_id, line_id, line_name, prev_tower_code, rel_tower_code, rel_line_name, base_line_name, base_tower_name, voltage)
             VALUES (distance, prev_tower_id, current_tower_id, line_id_record.line_id, line_name, prev_tower_code, rel_tower_code, rel_line_name, base_line_name, base_tower_name, voltage);
-						
+
         END LOOP;
     END LOOP;
 END;
-$BODY$
-  LANGUAGE plpgsql VOLATILE
-  COST 100
+$BODY$;
